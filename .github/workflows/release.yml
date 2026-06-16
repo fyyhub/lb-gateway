@@ -1,0 +1,89 @@
+name: release
+
+# Publish a GitHub Release with per-platform binaries when a version tag is pushed.
+# Example:  git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web-admin/package-lock.json
+
+      - name: Build admin UI
+        working-directory: web-admin
+        run: |
+          npm ci
+          npm run build
+
+      - name: Embed admin UI into the server binary
+        run: cp -r web-admin/dist/. internal/webui/dist/
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build and package binaries
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64 windows/amd64 darwin/arm64; do
+            goos="${target%/*}"
+            goarch="${target#*/}"
+            ext=""
+            [ "$goos" = "windows" ] && ext=".exe"
+            name="lb-gateway-${tag}-${goos}-${goarch}"
+            stage="staging/${name}"
+            mkdir -p "$stage"
+            echo "building ${name}"
+            GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags "-s -w" -o "${stage}/server${ext}" ./cmd/server
+            cp README.md "$stage/"
+            cp configs/config.example.json "$stage/"
+            if [ "$goos" = "windows" ]; then
+              (cd staging && zip -qr "../dist/${name}.zip" "$name")
+            else
+              tar -czf "dist/${name}.tar.gz" -C staging "$name"
+            fi
+          done
+          (cd dist && sha256sum lb-gateway-* > SHA256SUMS.txt)
+          ls -lh dist
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          prerelease=""
+          case "$tag" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$tag" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$tag" \
+            --generate-notes \
+            $prerelease
