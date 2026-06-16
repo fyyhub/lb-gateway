@@ -1,8 +1,0 @@
-{
-  "id": "e82f3835-8801-46c7-bea7-975ebacdca00",
-  "summary": "Frontend build artifacts must be synced to Go embed directory after every build",
-  "content": "After building the web-admin frontend (`npm run build` or equivalent), the output must be copied to the Go embedded assets directory so the server picks up the new pages. Skipping this step means the server continues serving old/stale HTML/JS/CSS. Always remember: build ≠ deploy; you must also sync the build output to the embed folder.",
-  "leaves": [],
-  "createdAt": 1781601406028,
-  "updatedAt": 1781601406028
-}

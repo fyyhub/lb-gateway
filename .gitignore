@@ -9,6 +9,7 @@ web-admin/node_modules/
 web-admin/dist/
 *.tsbuildinfo
 .claude/
+.codeflicker/
 
 # Admin UI build copied into the binary at build time; keep only the placeholder.
 internal/webui/dist/*
