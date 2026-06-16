@@ -1,0 +1,85 @@
+services:
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - /app/bin/admin
+      - -listen
+      - :8082
+      - -db
+      - /app/data/gateway.db
+      - -seed-config
+      - /app/configs/config.docker.json
+    environment:
+      GATEWAY_ADMIN_USERNAME: ${GATEWAY_ADMIN_USERNAME:-admin}
+      GATEWAY_ADMIN_PASSWORD: ${GATEWAY_ADMIN_PASSWORD:-admin123456}
+      GATEWAY_ADMIN_SECRET: ${GATEWAY_ADMIN_SECRET:-local-dev-secret}
+    volumes:
+      - gateway-data:/app/data
+    ports:
+      - "8082:8082"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - /bin/sh
+      - /app/scripts/wait-for-db.sh
+      - http://admin:8082/admin/api/health
+      - /app/bin/gateway
+      - -config
+      - /app/configs/config.docker-runtime.json
+      - -db
+      - /app/data/gateway.db
+      - -health-check-interval
+      - 10s
+    depends_on:
+      - admin
+      - mock-api-a
+      - mock-api-b
+    volumes:
+      - gateway-data:/app/data
+    ports:
+      - "8080:8080"
+
+  web-admin:
+    build:
+      context: .
+      dockerfile: web-admin/Dockerfile
+      args:
+        VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:-http://localhost:8082}
+    depends_on:
+      - admin
+    ports:
+      - "8081:80"
+
+  mock-api-a:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - /app/bin/mock-api
+      - -listen
+      - :9001
+      - -name
+      - mock-api-a
+      - -shape
+      - a
+
+  mock-api-b:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - /app/bin/mock-api
+      - -listen
+      - :9002
+      - -name
+      - mock-api-b
+      - -shape
+      - b
+
+volumes:
+  gateway-data:

@@ -1,0 +1,12 @@
+.git/
+.tmp-bin/
+.tmp-logs/
+.tmp-test/
+data/
+*.db
+*.db-shm
+*.db-wal
+web-admin/node_modules/
+web-admin/dist/
+*.tsbuildinfo
+

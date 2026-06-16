@@ -1,0 +1,11 @@
+{
+  "gateway": {
+    "listen": ":8080",
+    "readTimeoutSeconds": 10,
+    "writeTimeoutSeconds": 30,
+    "idleTimeoutSeconds": 60,
+    "logRequests": true
+  },
+  "routes": []
+}
+

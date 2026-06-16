@@ -1,0 +1,101 @@
+{
+  "gateway": {
+    "listen": ":8080",
+    "readTimeoutSeconds": 10,
+    "writeTimeoutSeconds": 30,
+    "idleTimeoutSeconds": 60,
+    "logRequests": true
+  },
+  "routes": [
+    {
+      "name": "api-route",
+      "enabled": true,
+      "priority": 100,
+      "type": "proxy",
+      "match": {
+        "path": "/api/**",
+        "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+      },
+      "upstreamGroup": {
+        "strategy": "weighted-round-robin",
+        "targets": [
+          {
+            "url": "http://127.0.0.1:9001",
+            "weight": 70,
+            "enabled": true
+          },
+          {
+            "url": "http://127.0.0.1:9002",
+            "weight": 30,
+            "enabled": true
+          }
+        ]
+      },
+      "requestRewrite": [
+        {
+          "type": "rewritePath",
+          "from": "/api",
+          "to": "/v1"
+        },
+        {
+          "type": "setHeader",
+          "key": "X-Gateway",
+          "value": "light-api-gateway"
+        },
+        {
+          "type": "setQuery",
+          "key": "source",
+          "value": "gateway"
+        }
+      ],
+      "responseMapping": [
+        {
+          "from": "$.result.username",
+          "to": "$.data.name"
+        },
+        {
+          "from": "$.data.name",
+          "to": "$.data.name"
+        },
+        {
+          "from": "$.result.userId",
+          "to": "$.data.id"
+        },
+        {
+          "from": "$.data.id",
+          "to": "$.data.id"
+        },
+        {
+          "value": true,
+          "to": "$.success"
+        }
+      ]
+    },
+    {
+      "name": "web-redirect",
+      "enabled": true,
+      "priority": 90,
+      "type": "redirect",
+      "match": {
+        "path": "/web",
+        "methods": ["GET"]
+      },
+      "redirect": {
+        "statusCode": 302,
+        "strategy": "weighted-round-robin",
+        "targets": [
+          {
+            "url": "https://example.com",
+            "weight": 80,
+            "enabled": true
+          },
+          {
+            "url": "https://www.iana.org/help/example-domains",
+            "weight": 20,
+            "enabled": true
+          }
+        ]
+      }
+    }
+  ]
+}
