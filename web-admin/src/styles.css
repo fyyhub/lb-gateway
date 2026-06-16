@@ -345,6 +345,9 @@ pre {
 }
 
 .icon-button:active {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.32);
   transform: translateY(1px);
 }
 
@@ -358,30 +361,47 @@ pre {
 }
 
 .primary-button {
-  background: linear-gradient(180deg, #4f8df7, #2f6fed);
-  border: 1px solid #3f7cf0;
+  background: linear-gradient(180deg, #2563eb, #1b48c4);
+  border: 1px solid #2a5fd9;
   color: #fff;
   font-weight: 600;
   padding: 0 16px;
   box-shadow:
-    0 10px 22px -12px rgba(47, 111, 237, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    0 10px 22px -12px rgba(29, 78, 216, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .primary-button:hover {
-  background: linear-gradient(180deg, #5d97f8, #3576ef);
+  background: linear-gradient(180deg, #2f6fed, #2052cf);
   box-shadow:
-    0 14px 26px -12px rgba(47, 111, 237, 1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    0 14px 28px -12px rgba(47, 111, 237, 0.95),
+    0 0 0 1px rgba(79, 141, 247, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .primary-button:active {
+  background: linear-gradient(180deg, #173e9e, #122f7a);
+  border-color: #1a47ad;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+    0 2px 8px -6px rgba(20, 47, 138, 0.8);
   transform: translateY(1px);
 }
 
 .primary-button.compact {
   min-height: 36px;
   padding: 0 13px;
+}
+
+.primary-button:focus-visible,
+.icon-button:focus-visible,
+.nav-item:focus-visible,
+.status-toggle:focus-visible,
+.select-row:focus-visible,
+.check-chip:focus-within,
+.mini-check:focus-within {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 .notice {
@@ -576,6 +596,11 @@ pre {
   border-color: rgba(79, 141, 247, 0.4);
 }
 
+.select-row:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.24);
+}
+
 .row-meta,
 .icon-row {
   align-items: center;
@@ -715,6 +740,11 @@ td code {
 
 .status-toggle.enabled:hover {
   border-color: rgba(52, 211, 153, 0.5);
+}
+
+.status-toggle:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.22);
 }
 
 .editor {
