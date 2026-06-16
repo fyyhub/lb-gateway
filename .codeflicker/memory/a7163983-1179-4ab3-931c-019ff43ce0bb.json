@@ -1,0 +1,8 @@
+{
+  "id": "a7163983-1179-4ab3-931c-019ff43ce0bb",
+  "summary": "Project structure: web-admin (React/tsx frontend) + Go backend (internal/adminapi, internal/store)",
+  "content": "Project has two main parts:\n- **Frontend**: `web-admin/` — React/TypeScript app (entry: `src/App.tsx`, styles: `src/styles.css`, version in `package.json`)\n- **Backend**: Go server under `internal/adminapi/` (routes in `server.go`) and `internal/store/` (data layer, e.g. `admin.go`, `admin_test.go`)\n\nThe Go server embeds the frontend build output, so after any frontend change you must rebuild and copy the build artifacts into the embedded directory, otherwise the server will serve stale pages.",
+  "leaves": [],
+  "createdAt": 1781601406025,
+  "updatedAt": 1781601406025
+}

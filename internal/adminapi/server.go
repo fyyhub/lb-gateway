@@ -154,11 +154,84 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, claims auth.Claims) {
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		writeJSON(w, http.StatusOK, claims)
+	case http.MethodPut:
+		s.handleUpdateAccount(w, r, claims)
+	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
+func (s *Server) handleUpdateAccount(w http.ResponseWriter, r *http.Request, claims auth.Claims) {
+	var req struct {
+		Username        string `json:"username"`
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+	if !readJSON(w, r, &req) {
 		return
 	}
-	writeJSON(w, http.StatusOK, claims)
+
+	username := strings.TrimSpace(req.Username)
+	if username == "" {
+		writeError(w, http.StatusBadRequest, "username is required")
+		return
+	}
+
+	user, err := s.store.GetAdminUserByID(r.Context(), claims.Subject)
+	if errors.Is(err, sql.ErrNoRows) {
+		writeError(w, http.StatusUnauthorized, "account not found")
+		return
+	}
+	if err != nil {
+		s.logger.Error("load admin user failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "load admin user failed")
+		return
+	}
+
+	if !auth.VerifyPassword(req.CurrentPassword, user.PasswordHash) {
+		writeError(w, http.StatusUnauthorized, "current password is incorrect")
+		return
+	}
+
+	passwordHash := user.PasswordHash
+	passwordChanged := false
+	if req.NewPassword != "" {
+		if len(req.NewPassword) < 8 {
+			writeError(w, http.StatusBadRequest, "new password must be at least 8 characters")
+			return
+		}
+		passwordHash, err = auth.HashPassword(req.NewPassword)
+		if err != nil {
+			s.logger.Error("hash password failed", "error", err)
+			writeError(w, http.StatusInternalServerError, "update account failed")
+			return
+		}
+		passwordChanged = true
+	}
+
+	updated, err := s.store.UpdateAdminCredentials(r.Context(), user.ID, username, passwordHash)
+	if errors.Is(err, store.ErrUsernameTaken) {
+		writeError(w, http.StatusConflict, "username already taken")
+		return
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		writeError(w, http.StatusUnauthorized, "account not found")
+		return
+	}
+	if err != nil {
+		s.logger.Error("update admin account failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "update account failed")
+		return
+	}
+
+	s.recordAudit(r, claims, "update", "admin_user", updated.ID, map[string]any{
+		"new_username":     updated.Username,
+		"password_changed": passwordChanged,
+	})
+	writeJSON(w, http.StatusOK, updated)
 }
 
 func (s *Server) handleRoutes(w http.ResponseWriter, r *http.Request, claims auth.Claims) {

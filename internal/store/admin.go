@@ -19,6 +19,10 @@ type AdminUser struct {
 	UpdatedAt    string `json:"updatedAt"`
 }
 
+// ErrUsernameTaken is returned when updating an admin account to a username that
+// already belongs to a different user.
+var ErrUsernameTaken = errors.New("username already taken")
+
 func (s *Store) CountAdminUsers(ctx context.Context) (int, error) {
 	var count int
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM admin_users`).Scan(&count); err != nil {
@@ -76,4 +80,46 @@ func (s *Store) GetAdminUserByUsername(ctx context.Context, username string) (Ad
 	}
 	user.Enabled = intToBool(enabled)
 	return user, nil
+}
+
+func (s *Store) GetAdminUserByID(ctx context.Context, id string) (AdminUser, error) {
+	var user AdminUser
+	var enabled int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, username, password_hash, role, enabled, created_at, updated_at
+		FROM admin_users
+		WHERE id = ?
+	`, id).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &enabled, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		return AdminUser{}, err
+	}
+	user.Enabled = intToBool(enabled)
+	return user, nil
+}
+
+// UpdateAdminCredentials updates the username and password hash for an admin
+// user. Pass the existing hash to leave the password unchanged. It returns
+// ErrUsernameTaken if the username already belongs to a different account.
+func (s *Store) UpdateAdminCredentials(ctx context.Context, id string, username string, passwordHash string) (AdminUser, error) {
+	existing, err := s.GetAdminUserByUsername(ctx, username)
+	if err == nil && existing.ID != id {
+		return AdminUser{}, ErrUsernameTaken
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return AdminUser{}, err
+	}
+
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE admin_users
+		SET username = ?, password_hash = ?, updated_at = ?
+		WHERE id = ?
+	`, username, passwordHash, nowText(), id)
+	if err != nil {
+		return AdminUser{}, fmt.Errorf("update admin credentials: %w", err)
+	}
+	if affected, err := result.RowsAffected(); err == nil && affected == 0 {
+		return AdminUser{}, sql.ErrNoRows
+	}
+
+	return s.GetAdminUserByID(ctx, id)
 }

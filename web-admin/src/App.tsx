@@ -7,6 +7,7 @@ import {
   FileText,
   Gauge,
   GitBranch,
+  KeyRound,
   LogOut,
   Map as MapIcon,
   Pencil,
@@ -27,7 +28,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type NoticeType = "success" | "error";
 type Notice = { type: NoticeType; text: string } | null;
-type TabID = "dashboard" | "routes" | "upstreams" | "mapping" | "debug" | "logs" | "audit";
+type TabID = "dashboard" | "routes" | "upstreams" | "mapping" | "debug" | "logs" | "audit" | "account";
 
 type AdminUser = {
   id?: string;
@@ -278,6 +279,11 @@ function App() {
     await loadData();
   };
 
+  const onAccountUpdated = useCallback((updated: AdminUser) => {
+    localStorage.setItem(userKey, JSON.stringify(updated));
+    setUser(updated);
+  }, []);
+
   if (!token) {
     return <LoginScreen apiBase={apiBase} onLogin={handleLogin} />;
   }
@@ -303,6 +309,7 @@ function App() {
             { id: "debug", label: "调试控制台", icon: Search },
             { id: "logs", label: "请求日志", icon: FileText },
             { id: "audit", label: "审计日志", icon: ShieldCheck },
+            { id: "account", label: "账户", icon: KeyRound },
           ].map((item) => {
             const Icon = item.icon;
             return (
@@ -374,6 +381,9 @@ function App() {
         {activeTab === "debug" ? <DebugPanel notify={notify} request={request} /> : null}
         {activeTab === "logs" ? <LogsPanel notify={notify} request={request} /> : null}
         {activeTab === "audit" ? <AuditPanel notify={notify} request={request} /> : null}
+        {activeTab === "account" ? (
+          <AccountPanel notify={notify} request={request} user={user} onUpdated={onAccountUpdated} />
+        ) : null}
       </main>
     </div>
   );
@@ -1549,6 +1559,125 @@ function AuditPanel({
   );
 }
 
+function AccountPanel({
+  request,
+  notify,
+  user,
+  onUpdated,
+}: {
+  request: AuthedRequest;
+  notify: (text: string, type?: NoticeType) => void;
+  user: AdminUser | null;
+  onUpdated: (user: AdminUser) => void;
+}) {
+  const [username, setUsername] = useState(user?.username || "");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      notify("用户名不能为空", "error");
+      return;
+    }
+    if (!currentPassword) {
+      notify("请输入当前密码", "error");
+      return;
+    }
+    if (newPassword) {
+      if (newPassword.length < 8) {
+        notify("新密码至少需要 8 个字符", "error");
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        notify("两次输入的新密码不一致", "error");
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      const updated = await request<AdminUser>("/admin/api/auth/me", {
+        method: "PUT",
+        body: JSON.stringify({
+          username: trimmedUsername,
+          currentPassword,
+          newPassword: newPassword || undefined,
+        }),
+      });
+      onUpdated(updated);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      notify(newPassword ? "账户与密码已更新" : "账户已更新");
+    } catch (error) {
+      notify(errorMessage(error), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="account-layout">
+      <section className="surface">
+        <div className="section-title">
+          <h2>账户信息</h2>
+          <KeyRound size={18} aria-hidden="true" />
+        </div>
+        <form className="account-form" onSubmit={submit}>
+          <label>
+            <span>用户名</span>
+            <input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} />
+          </label>
+          <label>
+            <span>当前密码</span>
+            <input
+              autoComplete="current-password"
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              placeholder="验证身份所需"
+            />
+          </label>
+
+          <div className="account-divider">
+            <span>修改密码（可选）</span>
+          </div>
+
+          <label>
+            <span>新密码</span>
+            <input
+              autoComplete="new-password"
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              placeholder="留空表示不修改，至少 8 位"
+            />
+          </label>
+          <label>
+            <span>确认新密码</span>
+            <input
+              autoComplete="new-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="再次输入新密码"
+            />
+          </label>
+
+          <button className="primary-button" disabled={saving} type="submit">
+            <Save size={16} aria-hidden="true" />
+            <span>{saving ? "保存中" : "保存账户"}</span>
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 function EmptyLine({ text }: { text: string }) {
   return <div className="empty-line">{text}</div>;
 }
@@ -1712,6 +1841,11 @@ function translateAPIError(message: string): string {
     "missing bearer token": "登录已失效，请重新登录",
     "invalid bearer token": "登录已失效，请重新登录",
     "invalid username or password": "用户名或密码错误",
+    "current password is incorrect": "当前密码不正确",
+    "username already taken": "用户名已被占用",
+    "username is required": "用户名不能为空",
+    "new password must be at least 8 characters": "新密码至少需要 8 个字符",
+    "account not found": "账户不存在",
     "method not allowed": "请求方法不允许",
     "not found": "资源不存在",
     "invalid json body": "请求内容不是有效 JSON",
@@ -1874,6 +2008,8 @@ function formatResourceType(resourceType: string): string {
       return "上游分组";
     case "upstream_target":
       return "上游目标";
+    case "admin_user":
+      return "管理员账户";
     case "auth":
       return "认证";
     default:
@@ -1890,6 +2026,7 @@ function tabTitle(tab: TabID): string {
     debug: "调试控制台",
     logs: "请求日志",
     audit: "审计日志",
+    account: "账户设置",
   };
   return titles[tab];
 }

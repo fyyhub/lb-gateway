@@ -984,6 +984,37 @@ textarea:focus {
   text-align: center;
 }
 
+.account-layout {
+  max-width: 560px;
+}
+
+.account-form {
+  display: grid;
+  gap: 14px;
+}
+
+.account-divider {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.account-divider::before,
+.account-divider::after {
+  border-top: 1px solid var(--line);
+  content: "";
+  flex: 1;
+}
+
+.account-form .primary-button {
+  justify-content: center;
+  margin-top: 4px;
+  min-height: 44px;
+}
+
 .login-screen {
   align-items: center;
   display: grid;
