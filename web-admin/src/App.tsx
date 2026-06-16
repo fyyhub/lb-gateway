@@ -152,10 +152,13 @@ const sampleHeaders = `{
 
 function App() {
   const [apiBase, setApiBase] = useState(() => {
+    // Default to same-origin ("") so the all-in-one server is called at
+    // /admin/api/* on the current host. VITE_ADMIN_API_URL or the in-app field
+    // can still point the UI at a separately deployed admin API.
     return (
       localStorage.getItem(baseURLKey) ||
       import.meta.env.VITE_ADMIN_API_URL ||
-      "http://localhost:8082"
+      ""
     );
   });
   const [token, setToken] = useState(() => localStorage.getItem(tokenKey) || "");
@@ -326,7 +329,11 @@ function App() {
           <div className="topbar-actions">
             <label className="base-url">
               <span>管理 API</span>
-              <input value={apiBase} onChange={(event) => setApiBase(event.target.value)} />
+              <input
+                value={apiBase}
+                onChange={(event) => setApiBase(event.target.value)}
+                placeholder="同源（留空即可）"
+              />
             </label>
             <button className="icon-button" onClick={saveAPIBase} title="保存 API 地址" type="button">
               <ClipboardCheck size={18} aria-hidden="true" />
@@ -414,7 +421,11 @@ function LoginScreen({
           <h1 id="login-title">登录</h1>
           <label>
             <span>管理 API</span>
-            <input value={baseURL} onChange={(event) => setBaseURL(event.target.value)} />
+            <input
+              value={baseURL}
+              onChange={(event) => setBaseURL(event.target.value)}
+              placeholder="同源（留空即可）"
+            />
           </label>
           <label>
             <span>用户名</span>

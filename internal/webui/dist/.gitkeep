@@ -1,0 +1,3 @@
+Placeholder so the //go:embed directive always finds this directory.
+The real admin UI build (index.html + assets/) is copied here at build time
+and is gitignored; only this file is tracked.

@@ -21,6 +21,42 @@ Implemented so far:
 - React admin UI for routes, upstreams, mapping previews, and debug requests.
 - Gateway hot reload from SQLite.
 - Local mock API services for verification.
+- All-in-one single-binary mode: gateway, admin API, and admin UI on one port.
+
+## Run All-in-One (Single Port)
+
+The `server` binary serves everything on **one port**, no nginx required:
+
+- Gateway data plane at `/` (your configured routes, e.g. `/api/**`, `/web`)
+- Admin UI at `/admin`
+- Admin API at `/admin/api`
+
+Build the admin UI and embed it into the binary (the build output is copied into `internal/webui/dist`, which `go build` embeds):
+
+```powershell
+cd web-admin
+npm install
+npm run build
+cd ..
+Copy-Item web-admin/dist/* internal/webui/dist/ -Recurse -Force
+```
+
+Run the all-in-one server. It creates `data/gateway.db`, seeds routes from `-config` when the routes table is empty, and creates a bootstrap admin user:
+
+```powershell
+$env:GATEWAY_ADMIN_PASSWORD="change-this-password"
+$env:GATEWAY_ADMIN_SECRET="change-this-token-secret"
+go run ./cmd/server -config configs/config.example.json -db data/gateway.db
+```
+
+Open `http://localhost:8080/admin` and sign in with the bootstrap admin credentials. The admin UI calls the admin API same-origin, so the "管理 API" field can be left blank.
+
+For admin UI development with hot reload, run the Vite dev server (it proxies `/admin/api` to the server on `:8080`), then open `http://127.0.0.1:8081/admin/`:
+
+```powershell
+cd web-admin
+npm run dev
+```
 
 ## Run Locally
 
@@ -61,7 +97,9 @@ Verify 302 redirect:
 Invoke-WebRequest http://localhost:8080/web -MaximumRedirection 0
 ```
 
-## Run With SQLite And Admin API
+## Run Split (Separate Gateway / Admin / UI)
+
+This is the multi-port alternative to the all-in-one server above: the gateway, admin API, and admin UI run as separate processes on separate ports. Use it if you want to scale or deploy the data plane and the admin plane independently.
 
 Start the admin API. It creates `data/gateway.db`, seeds routes from `configs/config.example.json` when the routes table is empty, and creates a bootstrap admin user when no admin users exist.
 
@@ -196,17 +234,17 @@ The gateway polls SQLite and applies changes without restart.
 
 ## Run With Docker Compose
 
-Build and start the gateway, admin API, React admin UI, and two mock upstream APIs:
+Build and start the all-in-one server and two mock upstream APIs:
 
 ```powershell
 docker compose up --build
 ```
 
-Open:
+Open (everything on one port):
 
 - Gateway: `http://localhost:8080`
-- Admin UI: `http://localhost:8081`
-- Admin API: `http://localhost:8082`
+- Admin UI: `http://localhost:8080/admin`
+- Admin API: `http://localhost:8080/admin/api`
 
 Default admin credentials:
 
