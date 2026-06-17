@@ -1,8 +1,10 @@
 # Light API Gateway
 
+Languages: [English](README.md) | [简体中文](README.zh-CN.md)
+
 Light API Gateway is a lightweight Go gateway MVP for API proxying, 302 web redirects, and SQLite-backed route management.
 
-Implemented so far:
+## Features
 
 - JSON-based route configuration.
 - SQLite-backed route and upstream configuration.
@@ -49,7 +51,7 @@ $env:GATEWAY_ADMIN_SECRET="change-this-token-secret"
 go run ./cmd/server -config configs/config.example.json -db data/gateway.db
 ```
 
-Open `http://localhost:8080/admin` and sign in with the bootstrap admin credentials. The admin UI calls the admin API same-origin, so the "管理 API" field can be left blank.
+Open `http://localhost:8080/admin` and sign in with the bootstrap admin credentials. The admin UI calls the admin API same-origin, so the "Admin API" field can be left blank.
 
 For admin UI development with hot reload, run the Vite dev server (it proxies `/admin/api` to the server on `:8080`), then open `http://127.0.0.1:8081/admin/`:
 
