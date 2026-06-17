@@ -176,7 +176,7 @@ pre {
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--r);
-  color: #b7c4d6;
+  color: #fff;
   display: flex;
   gap: 11px;
   min-height: 42px;
@@ -191,7 +191,7 @@ pre {
 }
 
 .nav-item svg {
-  color: #8595ad;
+  color: #fff;
   transition: color 160ms ease;
   flex: 0 0 auto;
 }
