@@ -210,6 +210,20 @@ func TestUpstreamCRUD(t *testing.T) {
 	if err := st.DeleteUpstreamTarget(ctx, target.ID); err != nil {
 		t.Fatalf("DeleteUpstreamTarget returned error: %v", err)
 	}
+	targets, err = st.ListUpstreamTargets(ctx, group.ID)
+	if err != nil {
+		t.Fatalf("ListUpstreamTargets returned error: %v", err)
+	}
+	if targets == nil || len(targets) != 0 {
+		t.Fatalf("got targets=%#v, want non-nil empty slice", targets)
+	}
+	groups, err = st.ListUpstreamGroups(ctx)
+	if err != nil {
+		t.Fatalf("ListUpstreamGroups returned error: %v", err)
+	}
+	if groups[0].Targets == nil || len(groups[0].Targets) != 0 {
+		t.Fatalf("got group targets=%#v, want non-nil empty slice", groups[0].Targets)
+	}
 	if err := st.DeleteUpstreamGroup(ctx, group.ID); err != nil {
 		t.Fatalf("DeleteUpstreamGroup returned error: %v", err)
 	}

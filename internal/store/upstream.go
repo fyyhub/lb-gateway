@@ -141,7 +141,7 @@ func (s *Store) ListUpstreamTargets(ctx context.Context, groupID string) ([]conf
 	}
 	defer rows.Close()
 
-	var targets []config.TargetConfig
+	targets := []config.TargetConfig{}
 	for rows.Next() {
 		var target config.TargetConfig
 		var enabled int
@@ -169,7 +169,7 @@ func (s *Store) ListAllUpstreamTargets(ctx context.Context) ([]config.TargetConf
 	}
 	defer rows.Close()
 
-	var targets []config.TargetConfig
+	targets := []config.TargetConfig{}
 	for rows.Next() {
 		var target config.TargetConfig
 		var enabled int

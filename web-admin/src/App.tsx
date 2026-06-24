@@ -193,12 +193,13 @@ function App() {
         request<UpstreamGroup[]>("/admin/api/upstream-groups"),
       ]);
       setRoutes(routeList);
-      setGroups(groupList);
+      const normalizedGroups = normalizeGroups(groupList);
+      setGroups(normalizedGroups);
       setRouteDraft((current) => {
         if (current.id) {
           return current;
         }
-        return { ...current, upstreamGroupId: current.upstreamGroupId || groupList[0]?.id };
+        return { ...current, upstreamGroupId: current.upstreamGroupId || normalizedGroups[0]?.id };
       });
     } catch (error) {
       notify(errorMessage(error), "error");
@@ -463,7 +464,7 @@ function LoginScreen({
 }
 
 function Dashboard({ routes, groups }: { routes: RouteConfig[]; groups: UpstreamGroup[] }) {
-  const targets = groups.flatMap((group) => group.targets);
+  const targets = groups.flatMap((group) => group.targets || []);
   const enabledRoutes = routes.filter((route) => route.enabled).length;
   const proxyRoutes = routes.filter((route) => route.type === "proxy").length;
   const mappingRules = routes.reduce((total, route) => total + (route.responseMapping?.length || 0), 0);
@@ -512,7 +513,7 @@ function Dashboard({ routes, groups }: { routes: RouteConfig[]; groups: Upstream
                 <span>{formatStrategy(group.strategy)}</span>
               </div>
               <div className="row-meta">
-                <span className="pill">{group.targets.length} 个目标</span>
+                <span className="pill">{(group.targets || []).length} 个目标</span>
               </div>
             </div>
           ))}
@@ -944,6 +945,7 @@ function UpstreamsPanel({
 }) {
   const [selectedID, setSelectedID] = useState("");
   const selected = groups.find((group) => group.id === selectedID) || groups[0];
+  const selectedTargets = selected?.targets || [];
   const [groupDraft, setGroupDraft] = useState<UpstreamGroup>(() => selected || newGroup());
   const [targetDraft, setTargetDraft] = useState<TargetConfig>(() => newTarget());
 
@@ -1048,7 +1050,7 @@ function UpstreamsPanel({
                 <strong>{group.name || group.id}</strong>
                 <span>{formatStrategy(group.strategy)}</span>
               </div>
-              <span className="pill">{group.targets.length} 个目标</span>
+              <span className="pill">{(group.targets || []).length} 个目标</span>
             </button>
           ))}
           {groups.length === 0 ? <EmptyLine text="暂无上游分组" /> : null}
@@ -1112,7 +1114,7 @@ function UpstreamsPanel({
               </tr>
             </thead>
             <tbody>
-              {(selected?.targets || []).map((target) => (
+              {selectedTargets.map((target) => (
                 <tr key={target.id || target.url}>
                   <td>
                     <code>{target.url}</code>
@@ -1140,7 +1142,7 @@ function UpstreamsPanel({
                   </td>
                 </tr>
               ))}
-              {selected?.targets.length ? null : (
+              {selectedTargets.length ? null : (
                 <tr>
                   <td colSpan={6}>
                     <EmptyLine text="该分组暂无目标" />
@@ -1777,6 +1779,13 @@ function cleanTarget(target: TargetConfig): TargetConfig {
     healthStatus: target.healthStatus || "unknown",
     consecutiveFailures: Number(target.consecutiveFailures) || 0,
   };
+}
+
+function normalizeGroups(groups: UpstreamGroup[] | null | undefined): UpstreamGroup[] {
+  return (groups || []).map((group) => ({
+    ...group,
+    targets: (group.targets || []).filter(Boolean).map(cleanTarget),
+  }));
 }
 
 function parseFieldValue(value: unknown): unknown {
