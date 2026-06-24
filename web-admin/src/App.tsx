@@ -948,6 +948,7 @@ function UpstreamsPanel({
   const selectedTargets = selected?.targets || [];
   const [groupDraft, setGroupDraft] = useState<UpstreamGroup>(() => selected || newGroup());
   const [targetDraft, setTargetDraft] = useState<TargetConfig>(() => newTarget());
+  const [bulkURLs, setBulkURLs] = useState("");
 
   useEffect(() => {
     if (!selectedID && groups[0]?.id) {
@@ -987,6 +988,7 @@ function UpstreamsPanel({
     await request<void>(`/admin/api/upstream-groups/${encodeURIComponent(groupDraft.id)}`, { method: "DELETE" });
     setSelectedID("");
     setGroupDraft(newGroup());
+    setBulkURLs("");
     notify("上游分组已删除");
     await reload();
   };
@@ -1014,6 +1016,35 @@ function UpstreamsPanel({
     await reload();
   };
 
+  const importTargets = async () => {
+    if (!groupDraft.id) {
+      notify("请先保存上游分组", "error");
+      return;
+    }
+    const urls = uniqueLines(bulkURLs);
+    if (urls.length === 0) {
+      notify("请输入至少一个 URL", "error");
+      return;
+    }
+
+    const baseTarget = cleanTarget(targetDraft);
+    for (const url of urls) {
+      await request<TargetConfig>(`/admin/api/upstream-groups/${encodeURIComponent(groupDraft.id)}/targets`, {
+        method: "POST",
+        body: JSON.stringify({
+          ...baseTarget,
+          id: undefined,
+          groupId: undefined,
+          url,
+        }),
+      });
+    }
+
+    setBulkURLs("");
+    notify(`已导入 ${urls.length} 个目标`);
+    await reload();
+  };
+
   const deleteTarget = async (target: TargetConfig) => {
     if (!target.id || !window.confirm(`确定删除目标「${target.url}」吗？`)) {
       return;
@@ -1029,7 +1060,16 @@ function UpstreamsPanel({
       <section className="surface">
         <div className="section-title">
           <h2>分组</h2>
-          <button className="primary-button compact" onClick={() => setGroupDraft(newGroup())} type="button">
+          <button
+            className="primary-button compact"
+            onClick={() => {
+              setSelectedID("");
+              setGroupDraft(newGroup());
+              setTargetDraft(newTarget());
+              setBulkURLs("");
+            }}
+            type="button"
+          >
             <Plus size={16} aria-hidden="true" />
             <span>分组</span>
           </button>
@@ -1043,6 +1083,7 @@ function UpstreamsPanel({
                 setSelectedID(group.id || "");
                 setGroupDraft(cloneGroup(group));
                 setTargetDraft(newTarget());
+                setBulkURLs("");
               }}
               type="button"
             >
@@ -1192,6 +1233,21 @@ function UpstreamsPanel({
             <Save size={16} aria-hidden="true" />
             <span>保存目标</span>
           </button>
+          <div className="bulk-target-import">
+            <label className="single-field">
+              <span>批量导入 URL</span>
+              <textarea
+                value={bulkURLs}
+                onChange={(event) => setBulkURLs(event.target.value)}
+                placeholder={"https://api-a.example.com\nhttps://api-b.example.com"}
+                spellCheck={false}
+              />
+            </label>
+            <button className="primary-button compact" onClick={() => void importTargets()} type="button">
+              <Plus size={16} aria-hidden="true" />
+              <span>导入 URL</span>
+            </button>
+          </div>
         </div>
       </section>
     </div>
@@ -1786,6 +1842,20 @@ function normalizeGroups(groups: UpstreamGroup[] | null | undefined): UpstreamGr
     ...group,
     targets: (group.targets || []).filter(Boolean).map(cleanTarget),
   }));
+}
+
+function uniqueLines(text: string): string[] {
+  const seen = new Set<string>();
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (!line || seen.has(line)) {
+        return false;
+      }
+      seen.add(line);
+      return true;
+    });
 }
 
 function parseFieldValue(value: unknown): unknown {

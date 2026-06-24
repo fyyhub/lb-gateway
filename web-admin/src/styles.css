@@ -905,6 +905,19 @@ textarea:focus {
   grid-template-columns: minmax(0, 1fr) 90px 110px 40px;
 }
 
+.bulk-target-import {
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.bulk-target-import textarea {
+  min-height: 110px;
+}
+
 .mapping-workbench {
   display: grid;
   gap: 16px;
