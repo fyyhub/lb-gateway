@@ -175,6 +175,38 @@ func TestUpstreamCRUD(t *testing.T) {
 		t.Fatalf("unexpected targets: %+v", targets)
 	}
 
+	updated, err = st.RecordUpstreamTargetHealthCheck(ctx, target.ID, "unhealthy", true, 2)
+	if err != nil {
+		t.Fatalf("RecordUpstreamTargetHealthCheck returned error: %v", err)
+	}
+	if updated.ConsecutiveFailures != 1 || !updated.Enabled {
+		t.Fatalf("after first failure got enabled=%v failures=%d, want enabled=true failures=1", updated.Enabled, updated.ConsecutiveFailures)
+	}
+
+	updated, err = st.RecordUpstreamTargetHealthCheck(ctx, target.ID, "unhealthy", true, 2)
+	if err != nil {
+		t.Fatalf("RecordUpstreamTargetHealthCheck returned error: %v", err)
+	}
+	if updated.Enabled || updated.ConsecutiveFailures != 2 {
+		t.Fatalf("after threshold got enabled=%v failures=%d, want enabled=false failures=2", updated.Enabled, updated.ConsecutiveFailures)
+	}
+
+	updated.Enabled = true
+	updated, err = st.UpdateUpstreamTarget(ctx, target.ID, updated)
+	if err != nil {
+		t.Fatalf("UpdateUpstreamTarget returned error: %v", err)
+	}
+	if updated.ConsecutiveFailures != 2 {
+		t.Fatalf("UpdateUpstreamTarget changed failures to %d, want 2", updated.ConsecutiveFailures)
+	}
+	updated, err = st.RecordUpstreamTargetHealthCheck(ctx, target.ID, "healthy", false, 2)
+	if err != nil {
+		t.Fatalf("RecordUpstreamTargetHealthCheck returned error: %v", err)
+	}
+	if !updated.Enabled || updated.ConsecutiveFailures != 0 || updated.HealthStatus != "healthy" {
+		t.Fatalf("after recovery got enabled=%v failures=%d status=%q, want enabled=true failures=0 status=healthy", updated.Enabled, updated.ConsecutiveFailures, updated.HealthStatus)
+	}
+
 	if err := st.DeleteUpstreamTarget(ctx, target.ID); err != nil {
 		t.Fatalf("DeleteUpstreamTarget returned error: %v", err)
 	}

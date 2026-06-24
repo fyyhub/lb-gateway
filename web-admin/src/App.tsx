@@ -77,6 +77,7 @@ type TargetConfig = {
   weight: number;
   enabled: boolean;
   healthStatus?: string;
+  consecutiveFailures?: number;
 };
 
 type RedirectConfig = {
@@ -1105,6 +1106,7 @@ function UpstreamsPanel({
                 <th>URL</th>
                 <th>权重</th>
                 <th>健康状态</th>
+                <th>连续失败</th>
                 <th>启用状态</th>
                 <th aria-label="操作" />
               </tr>
@@ -1117,6 +1119,7 @@ function UpstreamsPanel({
                   </td>
                   <td>{target.weight}</td>
                   <td>{formatHealthStatus(target.healthStatus)}</td>
+                  <td>{target.consecutiveFailures || 0}</td>
                   <td>
                     <span className={`pill ${target.enabled ? "ok" : "muted"}`}>{formatEnabled(target.enabled)}</span>
                   </td>
@@ -1139,7 +1142,7 @@ function UpstreamsPanel({
               ))}
               {selected?.targets.length ? null : (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <EmptyLine text="该分组暂无目标" />
                   </td>
                 </tr>
@@ -1772,6 +1775,7 @@ function cleanTarget(target: TargetConfig): TargetConfig {
     weight: Number(target.weight) || 1,
     enabled: Boolean(target.enabled),
     healthStatus: target.healthStatus || "unknown",
+    consecutiveFailures: Number(target.consecutiveFailures) || 0,
   };
 }
 
@@ -1878,7 +1882,7 @@ function newRedirectConfig(): RedirectConfig {
 }
 
 function newTarget(url = "http://127.0.0.1:9001"): TargetConfig {
-  return { url, weight: 1, enabled: true, healthStatus: "unknown" };
+  return { url, weight: 1, enabled: true, healthStatus: "unknown", consecutiveFailures: 0 };
 }
 
 function newGroup(): UpstreamGroup {

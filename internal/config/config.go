@@ -61,12 +61,13 @@ type RedirectConfig struct {
 }
 
 type TargetConfig struct {
-	ID           string `json:"id,omitempty"`
-	GroupID      string `json:"groupId,omitempty"`
-	URL          string `json:"url"`
-	Weight       int    `json:"weight"`
-	Enabled      bool   `json:"enabled"`
-	HealthStatus string `json:"healthStatus,omitempty"`
+	ID                  string `json:"id,omitempty"`
+	GroupID             string `json:"groupId,omitempty"`
+	URL                 string `json:"url"`
+	Weight              int    `json:"weight"`
+	Enabled             bool   `json:"enabled"`
+	HealthStatus        string `json:"healthStatus,omitempty"`
+	ConsecutiveFailures int    `json:"consecutiveFailures,omitempty"`
 }
 
 type RewriteRule struct {

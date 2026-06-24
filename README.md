@@ -117,7 +117,7 @@ Start the gateway from SQLite:
 go run ./cmd/gateway -config configs/config.example.json -db data/gateway.db
 ```
 
-When `-db` is set, the gateway probes enabled upstream targets every 10 seconds by default, writes `healthy` or `unhealthy` back to SQLite, and skips `unhealthy` targets during load balancing. Use `-health-check-interval 0` to disable checks, or tune `-health-check-timeout 2s`.
+When `-db` is set, the gateway probes enabled upstream targets every 10 seconds by default, writes `healthy` or `unhealthy` back to SQLite, and skips `unhealthy` targets during load balancing. Consecutive failures are counted in SQLite; after 3 failed checks the target is automatically disabled. Use `-health-check-interval 0` to disable checks, tune `-health-check-timeout 2s`, or set `-health-auto-disable-threshold 0` to keep health checks without auto-disabling targets.
 
 Start the React admin UI:
 

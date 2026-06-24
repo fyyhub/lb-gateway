@@ -21,24 +21,26 @@ const (
 
 type Store interface {
 	ListAllUpstreamTargets(ctx context.Context) ([]config.TargetConfig, error)
-	SetUpstreamTargetHealthStatus(ctx context.Context, id string, status string) (config.TargetConfig, error)
+	RecordUpstreamTargetHealthCheck(ctx context.Context, id string, status string, failed bool, autoDisableThreshold int) (config.TargetConfig, error)
 }
 
 type Checker struct {
-	store    Store
-	client   *http.Client
-	interval time.Duration
-	logger   *slog.Logger
+	store                Store
+	client               *http.Client
+	interval             time.Duration
+	autoDisableThreshold int
+	logger               *slog.Logger
 }
 
 type Option func(*Checker)
 
 func NewChecker(store Store, logger *slog.Logger, opts ...Option) *Checker {
 	checker := &Checker{
-		store:    store,
-		client:   &http.Client{Timeout: 2 * time.Second},
-		interval: 10 * time.Second,
-		logger:   logger,
+		store:                store,
+		client:               &http.Client{Timeout: 2 * time.Second},
+		interval:             10 * time.Second,
+		autoDisableThreshold: 3,
+		logger:               logger,
 	}
 	if checker.logger == nil {
 		checker.logger = slog.Default()
@@ -64,6 +66,12 @@ func WithClient(client *http.Client) Option {
 func WithInterval(interval time.Duration) Option {
 	return func(checker *Checker) {
 		checker.interval = interval
+	}
+}
+
+func WithAutoDisableThreshold(threshold int) Option {
+	return func(checker *Checker) {
+		checker.autoDisableThreshold = threshold
 	}
 }
 
@@ -102,15 +110,29 @@ func (c *Checker) CheckOnce(ctx context.Context) {
 		if err != nil {
 			c.logger.Warn("upstream health check failed", "target_id", target.ID, "url", target.URL, "error", err)
 		}
-		if target.HealthStatus == status {
+		failed := status == StatusUnhealthy
+		if !failed && target.HealthStatus == status && target.ConsecutiveFailures == 0 {
 			continue
 		}
 
-		if _, updateErr := c.store.SetUpstreamTargetHealthStatus(ctx, target.ID, status); updateErr != nil {
+		updated, updateErr := c.store.RecordUpstreamTargetHealthCheck(ctx, target.ID, status, failed, c.autoDisableThreshold)
+		if updateErr != nil {
 			c.logger.Warn("update upstream health status failed", "target_id", target.ID, "status", status, "error", updateErr)
 			continue
 		}
-		c.logger.Info("upstream health status changed", "target_id", target.ID, "url", target.URL, "status", status)
+		if target.Enabled && !updated.Enabled {
+			c.logger.Warn("upstream target auto disabled",
+				"target_id", target.ID,
+				"url", target.URL,
+				"consecutive_failures", updated.ConsecutiveFailures,
+				"threshold", c.autoDisableThreshold)
+		}
+		c.logger.Info("upstream health check recorded",
+			"target_id", target.ID,
+			"url", target.URL,
+			"status", status,
+			"consecutive_failures", updated.ConsecutiveFailures,
+			"enabled", updated.Enabled)
 	}
 }
 

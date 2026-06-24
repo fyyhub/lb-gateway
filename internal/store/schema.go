@@ -25,6 +25,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 			weight INTEGER NOT NULL DEFAULT 1,
 			enabled INTEGER NOT NULL DEFAULT 1,
 			health_status TEXT NOT NULL DEFAULT 'unknown',
+			consecutive_failures INTEGER NOT NULL DEFAULT 0,
 			created_at TEXT NOT NULL,
 			updated_at TEXT NOT NULL,
 			FOREIGN KEY(group_id) REFERENCES upstream_groups(id) ON DELETE CASCADE
@@ -90,5 +91,40 @@ func (s *Store) Migrate(ctx context.Context) error {
 		}
 	}
 
+	if err := s.ensureColumn(ctx, "upstream_targets", "consecutive_failures", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Store) ensureColumn(ctx context.Context, table string, column string, definition string) error {
+	rows, err := s.db.QueryContext(ctx, "PRAGMA table_info("+table+")")
+	if err != nil {
+		return fmt.Errorf("inspect table %s: %w", table, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name string
+		var columnType string
+		var notNull int
+		var defaultValue any
+		var primaryKey int
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
+			return fmt.Errorf("scan table %s columns: %w", table, err)
+		}
+		if name == column {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate table %s columns: %w", table, err)
+	}
+
+	if _, err := s.db.ExecContext(ctx, "ALTER TABLE "+table+" ADD COLUMN "+column+" "+definition); err != nil {
+		return fmt.Errorf("add column %s.%s: %w", table, column, err)
+	}
 	return nil
 }

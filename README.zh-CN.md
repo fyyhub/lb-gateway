@@ -119,7 +119,7 @@ go run ./cmd/admin -db data/gateway.db -seed-config configs/config.example.json
 go run ./cmd/gateway -config configs/config.example.json -db data/gateway.db
 ```
 
-设置 `-db` 后，网关默认每 10 秒探测一次启用的上游目标，把 `healthy` 或 `unhealthy` 写回 SQLite，并在负载均衡时跳过 `unhealthy` 目标。可以用 `-health-check-interval 0` 关闭健康检查，或用 `-health-check-timeout 2s` 调整超时时间。
+设置 `-db` 后，网关默认每 10 秒探测一次启用的上游目标，把 `healthy` 或 `unhealthy` 写回 SQLite，并在负载均衡时跳过 `unhealthy` 目标。连续失败次数会记录在 SQLite 中，默认连续失败 3 次后自动停用该目标。可以用 `-health-check-interval 0` 关闭健康检查，用 `-health-check-timeout 2s` 调整超时时间，或设置 `-health-auto-disable-threshold 0` 保留健康检查但关闭自动停用。
 
 启动 React 管理后台：
 

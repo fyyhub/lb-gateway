@@ -37,6 +37,7 @@ func main() {
 	reloadInterval := flag.Duration("reload-interval", 2*time.Second, "sqlite config reload interval")
 	healthCheckInterval := flag.Duration("health-check-interval", 10*time.Second, "upstream health check interval; set to 0 to disable")
 	healthCheckTimeout := flag.Duration("health-check-timeout", 2*time.Second, "upstream health check request timeout")
+	healthAutoDisableThreshold := flag.Int("health-auto-disable-threshold", 3, "consecutive failed health checks before auto-disabling an upstream target; set to 0 to disable")
 	bootstrapUsername := flag.String("bootstrap-username", envOrDefault("GATEWAY_ADMIN_USERNAME", "admin"), "bootstrap admin username")
 	bootstrapPassword := flag.String("bootstrap-password", envOrDefault("GATEWAY_ADMIN_PASSWORD", "admin123456"), "bootstrap admin password")
 	tokenSecret := flag.String("token-secret", os.Getenv("GATEWAY_ADMIN_SECRET"), "admin api token secret")
@@ -102,6 +103,7 @@ func main() {
 			logger,
 			health.WithInterval(*healthCheckInterval),
 			health.WithClient(&http.Client{Timeout: *healthCheckTimeout}),
+			health.WithAutoDisableThreshold(*healthAutoDisableThreshold),
 		)
 		go checker.Run(rootCtx)
 	}
