@@ -762,6 +762,7 @@ function RedirectEditor({
   setRouteDraft: (route: RouteConfig | ((current: RouteConfig) => RouteConfig)) => void;
 }) {
   const redirect = routeDraft.redirect || newRedirectConfig();
+  const [bulkURLs, setBulkURLs] = useState("");
   const setRedirect = (patch: Partial<RedirectConfig>) =>
     setRouteDraft((current) => ({
       ...current,
@@ -772,6 +773,16 @@ function RedirectEditor({
       targetIndex === index ? { ...target, ...patch } : target,
     );
     setRedirect({ targets });
+  };
+  const importTargets = () => {
+    const urls = uniqueLines(bulkURLs);
+    if (urls.length === 0) {
+      return;
+    }
+    setRedirect({
+      targets: [...redirect.targets, ...urls.map((url) => newTarget(url))],
+    });
+    setBulkURLs("");
   };
   return (
     <div className="nested-editor">
@@ -821,6 +832,21 @@ function RedirectEditor({
             </button>
           </div>
         ))}
+      </div>
+      <div className="bulk-target-import">
+        <label className="single-field">
+          <span>批量导入 URL</span>
+          <textarea
+            value={bulkURLs}
+            onChange={(event) => setBulkURLs(event.target.value)}
+            placeholder={"https://example.com/a\nhttps://example.com/b"}
+            spellCheck={false}
+          />
+        </label>
+        <button className="primary-button compact" onClick={importTargets} type="button">
+          <Plus size={16} aria-hidden="true" />
+          <span>导入 URL</span>
+        </button>
       </div>
     </div>
   );
